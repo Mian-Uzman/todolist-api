@@ -1,73 +1,48 @@
-
-let todos = require("../model/todo.model")
-let lastTodoId = 4
-
-const todoValidation = require("../validations/todoValidation")
-
+const { default: mongoose } = require("mongoose");
+let Todos = require("../model/todoSchema");
 
 module.exports = {
-    allTodos: (req, res) => {
-        res.json({ todos: todos })
-    },
+	allTodos: (req, res) => {
+		Todos.find({}, { __v: 0 }).then((data) => {
+			// console.log(data);
+			res.json({ message: "All Todos", data: data });
+		});
+	},
 
-    singleTodo: (req, res, next) => {
-        const todoId = parseInt(req.params.todoId)
-        const todo = todos.find((todo) => todo.id === todoId)
-        if (todo) {
-            res.json({ todo: todo })
-        }
-        else {
-            next({ status: 404, message: "No todo Found" })
-        }
-    },
+	addTodo: (req, res, next) => {
+		const text = req.body.text;
+		Todos.create({ text })
+			.then((data) => {
+				console.log(data);
+				res.json({ message: "Todo is added" });
+			})
+			.catch((err) => {
+				next({ status: 500, message: err });
+			});
+	},
 
-    addTodo: (req, res, next) => {
-        const errors = todoValidation.validate(req.body, { abortEarly: false })
-        // console.log(errors.error)
-        if (errors.error) {
-            const allErrors = errors.error.details.map(err => err.message)
-            next({ status: 500, message: allErrors })
-            return;
-        }
-        const todo = req.body
-        todo.id = lastTodoId
-        lastTodoId++
-        todos.push(todo)
-        res.json({ Message: "Todo Added" })
-    },
+	updateTodo: (req, res, next) => {
+		const todoId = req.params.todoId;
+		const newText = req.body.text;
+		const newCompleted = req.body.completed;
 
-    updateTodo: (req, res, next) => {
-        const errors = todoValidation.validate(req.body, { abortEarly: false })
-        // console.log(errors.error)
-        if (errors.error) {
-            const allErrors = errors.error.details.map(err => err.message)
-            next({ status: 500, message: allErrors })
-            return;
-        }
-        const todoId = req.body.todoId
-        const updatedText = req.body.updatedText
-        const updatedCompleted = req.body.updatedCompleted
-        const todo = todos.find((todo) => todo.id === todoId)
-        if (todo) {
-            todo.text = updatedText
-            todo.completed = updatedCompleted
-            res.json({ Message: `Todo ${todoId} updated to {Text:${updatedText}, Complete:${updatedCompleted}}` })
-        }
-        else {
-            next({ status: 404, message: "No todo Found" })
-        }
-    },
+		Todos.updateOne({ _id: todoId }, { text: newText, completed: newCompleted })
+			.then(() => {
+				res.json({ message: `Todo with id ${todoId} Updated` });
+			})
+			.catch((err) => {
+				next({ status: 500, message: err });
+			});
+	},
 
-    deleteTodo: (req, res, next) => {
-        const todoId = parseInt(req.params.todoId)
-        const todo = todos.find((todo) => todo.id === todoId)
-        if (todo) {
-            const newTodos = todos.filter((todo) => todo.id != todoId)
-            todos = newTodos
-            res.json({ message: `Todo id:${todoId} successfully deleted!` })
-        }
-        else {
-            next({ status: 404, message: "Todo not Found" })
-        }
-    }
-}
+	deleteTodo: (req, res, next) => {
+		const todoId = req.params.todoId;
+		Todos.deleteOne({ _id: todoId })
+			.then(() => {
+				res.json({ message: `Todo with id ${todoId} Deleted` });
+			})
+			.catch((err) => {
+				next({ status: 500, message: err });
+			});
+	},
+};
